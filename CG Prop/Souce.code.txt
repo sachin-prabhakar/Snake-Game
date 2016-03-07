@@ -1,0 +1,333 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <windows.h>
+#include <gl/glut.h>
+
+
+#define up_dir 1
+#define down_dir 2
+#define left_dir 3
+#define right_dir 4
+#define paused 5
+#define GLUT_KEY_ESC 27
+
+// Status  Variables
+GLint   lvl      = 1;
+GLint   Score = 0;
+GLint   body_count  = 0;
+GLbyte  gameOver = true;  
+
+// Variables of snake
+GLint   BodyPart[2][40];
+ GLint   _x       = 0;
+GLint   _y       = 0;
+GLint   _oldX[2];		
+GLint   _oldY[2];		
+GLbyte  direction  = 0;
+GLbyte  prevDirection= 0;
+
+// Variables of Food Particle
+GLint   _bx      = 0;
+GLint   _by      = 0;
+
+//  Screen  Variables
+GLint   _w       = 500;      //window width
+GLint   _h       = 500;		 //window height	
+GLint   BLw     = 10;		 
+GLint   BLh     = 30;		 // bottom-left corner
+GLint   TRw     = 240;     
+GLint   TRh     = 240;		 // top-right corner
+
+
+void resetSnkPos(){
+        _x       = BLw+10;   //////starting position
+        _y       = BLh+30;             
+        direction  = 0;
+        lvl      = 1;
+        Score = 0;
+        body_count  = 0;
+        gameOver = false;
+}
+
+void Display_on_screen(char *string){
+     while(*string)
+        glutBitmapCharacter(GLUT_BITMAP_8_BY_13, *string++);
+}
+
+void front_screen(){
+     char tmp_str[40];
+     glColor3f(0, 0, 0);///    BLACK Background
+     glRectf(BLw, BLh, TRw, TRh);
+     glColor3f(.13, 0.25, 1);
+     //glRasterPos2f(0,0);
+     glRasterPos2f((BLw+TRw)/2-50,210);
+     Display_on_screen("Sachin P");
+     //glColor3f(0, 0, 0);
+     //glRectf(BLw, BLh, TRw, TRh);
+     //glColor3f(1, 1, 1);
+     glRasterPos2f((BLw+TRw)/2-50, 205);
+     Display_on_screen("Sri Ram Deepak");
+
+     glRasterPos2f((BLw+TRw)/2-50,195);
+     Display_on_screen("NEW GAME: Press enter to start");
+     glRasterPos2f((BLw+TRw)/2-50, 190);
+     Display_on_screen("INSTRUCTION: Make the snake longer by feeding the snake");
+
+     glRasterPos2f(110, 148);
+     Display_on_screen("OPENGL PROJECT");
+     glColor3f(.4, .4, .4);
+     glRectf(65, 130, 200, 145);
+     glColor3f(1, 1, 1);
+     glRasterPos2f(105, 135);
+     Display_on_screen("Snake Game");
+     //  Print the Level and Points Status
+     glColor3f(0, 0, 0);
+	 glRasterPos2f(10,20);
+     sprintf(tmp_str, "Last Game Score");
+    Display_on_screen(tmp_str);
+      glRasterPos2f(6, 6);
+     sprintf(tmp_str, "Lvl: %d Pts: %d", lvl, Score);
+     Display_on_screen(tmp_str);
+     
+     
+}
+
+void DisplaySnake(){
+     int  i;
+     
+     glPushMatrix();                         // Display head
+     glTranslatef(_x,_y,0.0);          
+     glColor3f(1, 0, 0);                     
+     glRectf(0.0f, 0.0f, 10.0f, 10.0f);      
+     glColor3f(1, 1, 1); 
+	 glPointSize(3);
+	     glBegin(GL_POINTS);
+		   if(direction==right_dir)
+		   {
+			  glVertex3f(8.0f,8.0f,0.0f);
+			  glVertex3f(8.0f,2.0f,0.0f);
+		   }
+		   if(direction==up_dir)
+		   {
+			  glVertex3f(2.0f,8.0f,0.0f);
+			  glVertex3f(8.0f,8.0f,0.0f);
+		   }
+		   if(direction==left_dir)
+		   {
+			  glVertex3f(2.0f,2.0f,0.0f);
+			  glVertex3f(2.0f,8.0f,0.0f);
+		   }
+		   if(direction==down_dir)
+		   {
+			  glVertex3f(2.0f,2.0f,0.0f);
+			  glVertex3f(8.0f,2.0f,0.0f);
+		   }
+		 glEnd();
+     glPopMatrix();
+
+     for(i=0; i<body_count; i++){								
+          glPushMatrix();										
+          glTranslatef(BodyPart[0][i],BodyPart[1][i],0.0);		
+          glColor3f(1, 0, 0);									//Display Body
+          glRectf(0.0f, 0.0f, 10.0f, 10.0f);					
+          glPopMatrix();										
+     }
+}
+
+void CreateFood(){
+     char tmp_str[40];
+     
+     // Create a Black  background 
+     glColor3f(0, 0, 0);
+     glRectf(BLw, BLh, TRw, TRh);
+     
+     //  Position the Food
+     glPushMatrix();									
+     glTranslatef(_bx,_by,0.0);									
+     glColor3f(1,1,0);//Colour of the Food					//Display Food
+     glRectf(0.0f, 0.0f, 10.0f, 10.0f);						
+     glPopMatrix();										
+
+     //  Print the Level and Points Status
+     glColor3f(0, 0, 0);
+     glRasterPos2f(10, 10);
+     sprintf(tmp_str, "Lvl: %d Pts: %d", lvl, Score);
+     Display_on_screen(tmp_str);
+}
+
+int RandomNumber(int high, int low)
+{
+     return (rand() % (high-low))+low;
+}
+
+void newFoodPos(){
+     _bx = RandomNumber(TRw/10-BLw, BLw/10+1); /// high==14 && low==2;
+     _bx = _bx*10;
+     _by = RandomNumber(TRh/10-BLh, BLh/10+1); ///  high==21 && low==4
+     _by = _by*10;
+}
+
+
+bool collission(){
+     int i;
+     
+     for(i=0; i<body_count; i++)
+    {
+            if(BodyPart[0][i] == _x && BodyPart[1][i]  == _y) return true;
+     }
+     return false;
+}
+
+void go(int value)
+{
+     int i;
+     _oldX[1] = _x;
+     _oldY[1] = _y;
+     switch(direction){
+      case right_dir:
+         _x += 10;    
+         if(_x > TRw-10) _x = BLw;
+         break;
+      case left_dir:
+         _x -= 10;    
+         if(_x < BLw) _x = TRw-10;
+         break;
+      case up_dir:
+         _y += 10;    
+         if(_y > TRh-10) _y = BLh;
+         break;
+      case down_dir:
+         _y -= 10;    
+         if(_y < BLh) _y = TRh-10;
+         break;
+     }
+     
+     if(collission()) {Sleep(700);gameOver = true;}
+     
+	 //gameOver=collission();
+
+     if(_x == _bx && _y == _by){
+          Score++;
+          if(Score < 40) body_count++;
+          if(Score%5 == 0 && lvl < 15) lvl++;
+          newFoodPos();
+     }
+
+     for(i = 0; i<body_count; i++){
+          _oldX[0]       = _oldX[1];
+          _oldY[0]       = _oldY[1];
+          _oldX[1]       = BodyPart[0][i];
+          _oldY[1]       = BodyPart[1][i];
+          BodyPart[0][i] = _oldX[0];
+          BodyPart[1][i] = _oldY[0];
+     }
+     
+     glutTimerFunc(140-lvl*8, go, 0);                    
+}
+
+
+
+void display(void){
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+     glClear(GL_COLOR_BUFFER_BIT);
+
+     if(!gameOver){
+         CreateFood();
+         DisplaySnake();
+     }
+     else
+         front_screen();
+         
+     glutPostRedisplay();
+     glutSwapBuffers();
+}
+
+void key_pressed_is(int key, int x, int y){
+   switch(key){
+    case GLUT_KEY_RIGHT     :
+         if(direction != left_dir )
+		 {
+			 prevDirection=direction;
+			 direction = right_dir;
+		 }
+		 
+         glutPostRedisplay();
+         break;
+
+    case GLUT_KEY_LEFT      :
+         if(direction != right_dir)
+		 {
+			 prevDirection=direction;
+             direction = left_dir;
+		 }
+     glutPostRedisplay();                    
+         break;
+
+    case GLUT_KEY_UP        :
+         if(direction != down_dir)
+		 {
+			 prevDirection=direction;
+             direction = up_dir;
+		 }
+     glutPostRedisplay();                    
+         break;
+
+    case GLUT_KEY_DOWN      :
+         if(direction != up_dir)
+		 {
+			 prevDirection=direction;
+             direction = down_dir;
+		 }
+     glutPostRedisplay();                    
+         break;
+   }
+}
+
+void mykey(unsigned char key,int x,int y)
+{
+
+	 if(key=='q' || key=='Q') 
+		 exit(0);
+	 if(key==27)exit(0);
+	 if(key==13 && gameOver)
+		 resetSnkPos();
+
+
+}
+
+void myreshape(GLsizei w, GLsizei h){
+     glViewport(0, 0, w, h);
+     glMatrixMode(GL_PROJECTION);
+     glLoadIdentity();
+     if (w <= h) 
+        gluOrtho2D (0.0f, 250.0f, 0.0f, 250.0f*_h/_w);
+     else 
+        gluOrtho2D (0.0f, 250.0f*_w/_h, 0.0f, 250.0f);
+}
+void myinit()
+{
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0,500,0,500);
+	glMatrixMode(GL_MODELVIEW);
+}
+
+int main(void)
+{
+     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+     glutInitWindowSize(_w,_h);
+     glutInitWindowPosition(0,0);
+     glutCreateWindow("Snake Game");
+	 myinit();
+     glutSpecialFunc(key_pressed_is);
+     glutDisplayFunc(display);
+     glutReshapeFunc(myreshape);
+     glutKeyboardFunc(mykey);
+     newFoodPos();
+     go(0); 
+     
+     glutMainLoop();
+	 return 0;
+}
+
